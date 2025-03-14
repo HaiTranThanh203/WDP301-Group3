@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const User = require('./userModel');
 const newsSchema = new mongoose.Schema(
   {
     authorId: { type: mongoose.Types.ObjectId, ref: 'User' },

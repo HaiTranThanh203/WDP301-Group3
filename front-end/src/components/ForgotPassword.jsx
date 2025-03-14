@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import frogImage from '../assets/images/Avatar.png';
 import background from '../assets/images/background1.jpg';
@@ -7,6 +7,7 @@ function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [cooldown, setCooldown] = useState(0); // Thời gian cooldown (giây)
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -14,7 +15,7 @@ function ForgotPassword() {
     // Kiểm tra email hợp lệ
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      setErrorMessage('Email không hợp lệ');
+      setErrorMessage('Email is invalid.');
       setSuccessMessage('');
       return;
     }
@@ -24,21 +25,46 @@ function ForgotPassword() {
 
       // Xử lý phản hồi từ server
       if (response.data.status === 'success') {
-        setSuccessMessage('Một liên kết để thay đổi mật khẩu đã được gửi đến email của bạn.');
+        setSuccessMessage('New Password has sent into your email !!.');
         setErrorMessage('');
+        // Bắt đầu cooldown 60 giây
+        setCooldown(60);
       } else {
-        setErrorMessage('Có lỗi xảy ra. Vui lòng thử lại!');
+        setErrorMessage('Having error .Please Try Again !');
         setSuccessMessage('');
       }
     } catch (error) {
-      console.error('Lỗi khi yêu cầu thay đổi mật khẩu:', error);
-      setErrorMessage('Có lỗi xảy ra. Vui lòng thử lại!');
+      
+      setErrorMessage('Having error .Please Try Again !');
       setSuccessMessage('');
     }
   };
 
+  // useEffect để giảm cooldown mỗi giây
+  useEffect(() => {
+    if (cooldown > 0) {
+      const timer = setInterval(() => {
+        setCooldown(prev => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [cooldown]);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100" style={{ backgroundImage: `url(${background})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+    <div
+      className="flex min-h-screen items-center justify-center bg-gray-100"
+      style={{
+        backgroundImage: `url(${background})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center'
+      }}
+    >
       <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md border-4 border-gray-300">
         <div className="flex justify-center">
           <img 
@@ -62,8 +88,12 @@ function ForgotPassword() {
           </div>
           <button 
             type="submit" 
-            className="w-full py-2 px-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-md shadow-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-50">
-            Gửi yêu cầu
+            disabled={cooldown > 0}
+            className={`w-full py-2 px-4 ${
+              cooldown > 0 ? "bg-gray-400 cursor-not-allowed" : "bg-orange-500 hover:bg-orange-600"
+            } text-white font-semibold rounded-md shadow-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-50`}
+          >
+            {cooldown > 0 ? `Request password again in ${cooldown}s` : 'Request Password'}
           </button>
         </form>
 
@@ -72,7 +102,7 @@ function ForgotPassword() {
         {errorMessage && <div className="mt-4 text-red-600 text-center">{errorMessage}</div>}
 
         <div className="mt-4 text-center">
-          <a href="/login" className="text-orange-500 hover:underline">Quay lại đăng nhập</a>
+          <a href="/login" className="text-orange-500 hover:underline">Back To Login</a>
         </div>
       </div>
     </div>

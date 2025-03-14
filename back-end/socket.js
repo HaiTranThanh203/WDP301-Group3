@@ -1,4 +1,4 @@
- // socket.js
+// socket.js (Server-side)
 const { Server } = require('socket.io');
 let io;
 const initSocket = (server) => {
@@ -9,25 +9,21 @@ const initSocket = (server) => {
         'http://localhost:3000',
         'http://127.0.0.1:9999',
         'http://127.0.0.1:3000',
+        'http://localhost:5173'  // Thêm domain của front-end vào đây
       ],
       methods: ['GET', 'POST'],
       credentials: true,
     },
-    // transports: ['websocket'],
-    // pingInterval: 1000 * 60 * 5,
-    // pingTimeout: 1000 * 60 * 3,
   });
 
-  // Listen for incoming socket connections
   io.on('connection', (socket) => {
     console.log('A user connected: ' + socket.id);
     socket.on('joinRoom', (userId) => {
-      console.log('User  join: ' + userId);
-      socket.join(userId); // Join the room with the user's ID
+      console.log('User joined room: ' + userId);
+      socket.join(userId); // Each user joins their own room
     });
-    // Handle disconnection
     socket.on('disconnect', () => {
-      console.log('User  disconnected: ' + socket.id);
+      console.log('User disconnected: ' + socket.id);
     });
   });
 };

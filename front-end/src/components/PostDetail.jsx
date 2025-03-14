@@ -1,183 +1,380 @@
-import React, { useState } from 'react';
-import { FaThumbsUp, FaThumbsDown, FaComment, FaReply, FaEllipsisV, FaPaperPlane } from 'react-icons/fa'; // Icons for like, dislike, comment, reply, send
-import avatar1 from '../assets/images/avatar1.png';
-import avatar2 from '../assets/images/avatar2.png';
-import avatar3 from '../assets/images/avatar3.png';
-import bag from '../assets/images/bag.png';
+import React, { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
+import axios from "axios";
+import { FaThumbsUp, FaThumbsDown, FaComment, FaPaperPlane, FaShare } from "react-icons/fa";
+import avatarDefault from "../assets/images/avatar2.png";
 
 const PostDetail = () => {
-  const [postDropdownOpen, setPostDropdownOpen] = useState(false); // State for post dropdown
-  const [commentDropdownOpen, setCommentDropdownOpen] = useState(null); // State for comment dropdown
-  const [replyDropdownOpen, setReplyDropdownOpen] = useState(null); // State for reply dropdown
-  const [comment, setComment] = useState(""); // State to handle comment input
-  const [comments, setComments] = useState([
-    {
-      user: "Sian Nguyen",
-      time: "1 hr ago",
-      content: "I like your post. I would like to share my journey.",
-      replies: [
+  const { postId } = useParams();
+  const [post, setPost] = useState(null);
+  const [comments, setComments] = useState([]);
+  const [commentInput, setCommentInput] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [replyInput, setReplyInput] = useState({});
+  const [showReplyInput, setShowReplyInput] = useState({});
+
+
+  // Lấy user & token từ localStorage
+  const token = localStorage.getItem("token") || "";
+  const user = JSON.parse(localStorage.getItem("user")) || null;
+
+  useEffect(() => {
+    if (!token || !user) {
+      setError("You are not logged in!");
+      setLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        console.log("Fetching post with postId:", postId);
+
+        const postRes = await axios.get(`http://localhost:9999/api/v1/posts/${postId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (postRes.data && postRes.data.data) {
+          setPost(postRes.data.data);
+        } else {
+          setError("Failed to load the post.");
+        }
+
+        console.log("Fetching comments...");
+        try {
+          const commentRes = await axios.get(`http://localhost:9999/api/v1/comments/get-by-post/${postId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const formatNestedComments = (comments) => {
+            const commentMap = new Map();
+            comments.forEach((comment) => commentMap.set(comment._id, { ...comment, childrens: [] }));
+
+            comments.forEach((comment) => {
+              if (comment.parentId && commentMap.has(comment.parentId)) {
+                commentMap.get(comment.parentId).childrens.push(comment);
+              }
+            });
+
+            return Array.from(commentMap.values()).filter(comment => !comment.parentId);
+          };
+
+          setComments(formatNestedComments(commentRes.data?.data || []));
+
+        } catch (error) {
+          console.warn("No comments found, setting empty list.");
+          setComments([]);
+        }
+
+      } catch (error) {
+        console.error("Error fetching data:", error.response ? error.response.data : error);
+        setError("Failed to load data from the server.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [postId]);
+  const handleReplyComment = async (parentId) => {
+    if (!replyInput[parentId]?.trim()) return;
+
+    try {
+      const response = await axios.post(
+        "http://localhost:9999/api/v1/comments/reply",
         {
-          user: "Hannah",
-          time: "18 minutes ago",
-          content: "So interesting!",
+          userId: user.id,
+          postId,
+          parentId,
+          content: replyInput[parentId],
         },
-      ],
-    },
-  ]); // State to handle comments and replies
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
-  const handleAddComment = (e) => {
+      if (response.data.success) {
+        console.log("✅ Reply Comment Success:", response.data.data);
+
+        setComments((prevComments) => {
+          const updateComments = (comments) => {
+            return comments.map((comment) => {
+              if (comment._id === parentId) {
+                return {
+                  ...comment,
+                  childrens: [
+                    ...(comment.childrens || []),
+                    {
+                      ...response.data.data,
+                      userId: {
+                        _id: user.id,
+                        username: user.username,
+                        avatar: user.avatar || avatarDefault,
+                      },
+                    },
+                  ],
+                };
+              } else if (comment.childrens && comment.childrens.length > 0) {
+                return { ...comment, childrens: updateComments(comment.childrens) };
+              }
+              return comment;
+            });
+          };
+
+          return updateComments(prevComments);
+        });
+
+        setReplyInput({ ...replyInput, [parentId]: "" });
+        setShowReplyInput({ ...showReplyInput, [parentId]: false });
+      }
+    } catch (error) {
+      console.error("❌ Error replying to comment:", error.response?.data || error);
+    }
+  };
+
+
+
+  const handleVote = async (type) => {
+    if (!post || !user) return;
+
+    try {
+      console.log(`Voting ${type} for post:`, postId);
+
+      const response = await axios.patch(
+        `http://localhost:9999/api/v1/posts/${postId}/vote`,
+        { userId: user.id, vote: type },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.data.success) {
+        setPost((prevPost) => ({
+          ...prevPost,
+          upVotes: response.data.data.upVotes,
+          downVotes: response.data.data.downVotes,
+          votes: response.data.data.votes,
+          userId: prevPost.userId // ✅ Giữ nguyên thông tin user
+        }));
+      }
+    } catch (error) {
+      console.error(`Error voting ${type}:`, error.response ? error.response.data : error);
+    }
+  };
+
+
+
+  const handleAddComment = async (e) => {
     e.preventDefault();
-    // Add a new comment
-    setComments([
-      ...comments,
-      {
-        user: "You", // Example, replace with actual user
-        time: "Just now",
-        content: comment,
-        replies: [],
-      },
-    ]);
-    setComment(""); // Reset the input field
+    if (!commentInput.trim()) return;
+
+    if (!user || !user.id) {
+      console.error("Error: User ID not found in localStorage.");
+      return;
+    }
+
+    try {
+      console.log("Submitting comment:", { postId, userId: user.id, content: commentInput });
+
+      const response = await axios.post(
+        "http://localhost:9999/api/v1/comments",
+        {
+          postId,
+          userId: user.id,
+          content: commentInput,
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.status === 201 && response.data && response.data.data) {
+        console.log("Comment successfully posted:", response.data.data);
+
+        setComments((prevComments) => [
+          {
+            ...response.data.data,
+            userId: {
+              _id: user.id,
+              username: user.username,
+              avatar: user.avatar || avatarDefault,
+            },
+          },
+          ...prevComments,
+        ]);
+
+        setCommentInput("");
+      } else {
+        console.error("Unexpected API response:", response);
+      }
+    } catch (error) {
+      console.error("Error posting comment:", error.response ? error.response.data : error);
+    }
   };
 
-  const handleAddReply = (parentIndex, replyContent) => {
-    const updatedComments = [...comments];
-    updatedComments[parentIndex].replies.push({
-      user: "You", // Example, replace with actual user
-      time: "Just now",
-      content: replyContent,
-    });
-    setComments(updatedComments);
+  const handleVoteComment = async (commentId, type) => {
+    if (!user) return;
+
+    try {
+      const response = await axios.patch(
+        `http://localhost:9999/api/v1/comments/${commentId}/vote`,
+        { userId: user.id, vote: type },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.data.success) {
+        setComments((prevComments) => {
+          const updateVotes = (comments) => {
+            return comments.map((comment) => {
+              if (comment._id === commentId) {
+                return {
+                  ...comment,
+                  upVotes: response.data.data.upVotes,
+                  downVotes: response.data.data.downVotes
+                };
+              } else if (comment.childrens && comment.childrens.length > 0) {
+                return { ...comment, childrens: updateVotes(comment.childrens) };
+              }
+              return comment;
+            });
+          };
+          return updateVotes(prevComments);
+        });
+      }
+    } catch (error) {
+      console.error("❌ Error voting comment:", error.response?.data || error);
+    }
   };
 
-  // Toggle functions for each dropdown
-  const togglePostDropdown = () => setPostDropdownOpen(!postDropdownOpen);
-  const toggleCommentDropdown = (index) => setCommentDropdownOpen(commentDropdownOpen === index ? null : index);
-  const toggleReplyDropdown = (index) => setReplyDropdownOpen(replyDropdownOpen === index ? null : index);
+
+  const renderComments = (comments, parentId = null) => {
+    return comments
+      .filter(comment => comment.parentId === parentId || (!comment.parentId && !parentId))
+      .map((comment) => (
+        <div key={comment._id} className="ml-4 mt-2 pl-4">
+          <div className="flex items-center space-x-2">
+            <img src={comment.userId?.avatar || avatarDefault} alt="User Avatar" className="h-8 w-8 rounded-full" />
+            <div>
+              <h3 className="font-semibold text-sm">{comment.userId?.username || "Anonymous"}</h3>
+              <p className="text-sm text-gray-700">{comment.content}</p>
+            </div>
+          </div>
+
+          {/* ✅ Thêm nút Reply */}
+          {/* ✅ Like / Dislike cho comment */}
+          <div className="flex items-center space-x-4 mt-2 text-gray-600">
+            <button onClick={() => handleVoteComment(comment._id, "like")} className="flex items-center space-x-1">
+              <FaThumbsUp className="text-lg" /> <span>{comment.upVotes ?? 0}</span>
+            </button>
+            <button onClick={() => handleVoteComment(comment._id, "dislike")} className="flex items-center space-x-1">
+              <FaThumbsDown className="text-lg" /> <span>{comment.downVotes ?? 0}</span>
+            </button>
+          </div>
+
+          {/* ✅ Thêm nút Reply */}
+          <button
+            onClick={() => setShowReplyInput({ ...showReplyInput, [comment._id]: !showReplyInput[comment._id] })}
+            className="text-blue-500 text-sm mt-1 flex items-center"
+          >
+            <FaComment className="mr-1" /> Reply
+          </button>
+
+
+          {/* ✅ Ô nhập Reply */}
+          {showReplyInput[comment._id] && (
+            <div className="ml-8 mt-2">
+              <input
+                type="text"
+                placeholder="Reply..."
+                value={replyInput[comment._id] || ""}
+                onChange={(e) => setReplyInput({ ...replyInput, [comment._id]: e.target.value })}
+                className="w-full p-2 border border-gray-300 rounded-md text-sm"
+              />
+              <button
+                onClick={() => handleReplyComment(comment._id)}
+                className="bg-blue-500 text-white py-1 px-3 rounded-md text-xs mt-1"
+              >
+                Send Reply
+              </button>
+            </div>
+          )}
+
+          {/* ✅ Hiển thị các reply dạng cây */}
+          {comment.childrens && comment.childrens.length > 0 && (
+            <div className="ml-6">{renderComments(comment.childrens, comment._id)}</div>
+          )}
+        </div>
+      ));
+  };
+
+
+
+
+
+  if (loading) return <p className="text-center text-gray-500">Loading post...</p>;
+  if (error) return <p className="text-red-500 text-center">{error}</p>;
 
   return (
     <div className="bg-gray-100 min-h-screen flex flex-col">
-      {/* Post Detail Section */}
-      <div className="bg-white p-6 rounded-lg shadow-md">
-        <div className="flex items-center space-x-2">
-          <img src={avatar2} alt="User Avatar" className="h-12 w-12 rounded-full" />
-          <div>
-            <h2 className="font-semibold text-lg">funny</h2>
-            <p className="text-xs text-gray-500">2 hr ago</p>
-          </div>
-          <div className="ml-auto relative">
-            <FaEllipsisV
-              className="text-gray-600 cursor-pointer rotate-90"
-              onClick={togglePostDropdown}
-            />
-            {postDropdownOpen && (
-              <div className="absolute right-0 mt-2 bg-white shadow-lg rounded-md w-40 text-sm text-gray-700">
-                <ul>
-                  <li className="px-4 py-2 hover:bg-gray-100 cursor-pointer">Save post</li>
-                  <li className="px-4 py-2 hover:bg-gray-100 cursor-pointer">Report post</li>
-                </ul>
-              </div>
-            )}
-          </div>
-        </div>
-        <p className="mt-2 text-gray-700">I’m looking for this bag. Contact me via this account.</p>
-        <img src={bag} alt="Bag" className="mt-4 w-32 h-32 object-cover" />
-        <div className="flex items-center space-x-6 mt-4">
-          <div className="flex items-center space-x-1 text-gray-500">
-            <FaThumbsUp className="text-lg" />
-            <span className="text-sm">15K</span>
-          </div>
-          <div className="flex items-center space-x-1 text-gray-500">
-            <FaThumbsDown className="text-lg" />
-            <span className="text-sm">1K</span>
-          </div>
-          <div className="flex items-center space-x-1 text-gray-500">
-            <FaComment className="text-lg" />
-            <span className="text-sm">80</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Comment Section */}
-      <div className="bg-white p-6 rounded-lg shadow-md mt-6">
-        <form onSubmit={handleAddComment} className="flex items-center space-x-2">
-          <input
-            type="text"
-            placeholder="Add a comment..."
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            className="w-full p-2 border border-gray-300 rounded-md text-sm"
-          />
-          <button
-            type="submit"
-            className="bg-500 text-dark py-2 px-4 rounded-md text-sm hover:bg-orange-400 transition duration-300">
-            <FaPaperPlane className="inline-block mr-2" />
-          </button>
-        </form>
-
-        {/* Comments */}
-        <div className="mt-6 space-y-4">
-          {comments.map((comment, index) => (
-            <div key={index}>
-              {/* Main Comment */}
-              <div className="flex items-center space-x-2">
-                <img src={avatar3} alt="User Avatar" className="h-8 w-8 rounded-full" />
-                <div>
-                  <h3 className="font-semibold text-sm">{comment.user}</h3>
-                  <p className="text-xs text-gray-500">{comment.time}</p>
-                  <p className="text-sm text-gray-700">{comment.content}</p>
-                  <div className="flex items-center space-x-2 text-gray-500 text-xs mt-1">
-                    <FaReply className="text-sm" />
-                    <span>Reply</span>
-                  </div>
-                </div>
-                {/* Ellipsis for comment dropdown */}
-                <div className="ml-auto relative" rotate-90>
-                  <FaEllipsisV
-                    className="text-gray-600 cursor-pointer rotate-90"
-                    onClick={() => toggleCommentDropdown(index)}
-                  />
-                  {commentDropdownOpen === index && (
-                    <div className="absolute right-0 mt-2 bg-white shadow-lg rounded-md w-40 text-sm text-gray-700">
-                      <ul>
-                        <li className="px-4 py-2 hover:bg-gray-100 cursor-pointer">Report Comment</li>
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Replies */}
-              <div className="ml-8 space-y-2 mt-4">
-                {comment.replies.map((reply, replyIndex) => (
-                  <div key={replyIndex} className="flex items-center space-x-2">
-                    <img src={avatar1} alt="Reply Avatar" className="h-8 w-8 rounded-full" />
-                    <div>
-                      <h3 className="font-semibold text-sm">{reply.user}</h3>
-                      <p className="text-xs text-gray-500">{reply.time}</p>
-                      <p className="text-sm text-gray-700">{reply.content}</p>
-                    </div>
-                    {/* Ellipsis for reply dropdown */}
-                    <div className="ml-auto relative">
-                      <FaEllipsisV
-                        className="text-gray-600 cursor-pointer rotate-90"
-                        onClick={() => toggleReplyDropdown(replyIndex)}
-                      />
-                      {replyDropdownOpen === replyIndex && (
-                        <div className="absolute right-0 mt-2 bg-white shadow-lg rounded-md w-40 text-sm text-gray-700">
-                          <ul>
-                            <li className="px-4 py-2 hover:bg-gray-100 cursor-pointer">Report Comment</li>
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
+      {post ? (
+        <>
+          <div className="bg-white p-6 rounded-lg shadow-md">
+            <div className="flex items-center space-x-2">
+              <img
+                src={post.userId && post.userId.avatar ? post.userId.avatar : avatarDefault}
+                alt="User Avatar"
+                className="h-12 w-12 rounded-full"
+              />
+              <div>
+                <h2 className="font-semibold text-lg">
+                  {post.userId && post.userId.username ? post.userId.username : "Anonymous"}
+                </h2>
               </div>
             </div>
-          ))}
-        </div>
-      </div>
+            <p className="mt-2 text-gray-700">{post.content || "No content available"}</p>
+
+            {/* ✅ Hiển thị ảnh bài đăng (nếu có) */}
+            {post.media && post.media.length > 0 && (
+              <div className="mt-4">
+                {post.media.map((imageUrl, index) => (
+                  <img
+                    key={index}
+                    src={imageUrl}
+                    alt={`Post Image ${index + 1}`}
+                    className="mt-2 w-full h-auto rounded-lg shadow-md"
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Like, Dislike, Share, Comment Section */}
+            <div className="flex items-center space-x-6 mt-4 text-gray-600">
+              <button onClick={() => handleVote("like")} className="flex items-center space-x-1">
+                <FaThumbsUp className="text-lg" /> <span>{post.upVotes ?? 0}</span>
+              </button>
+              <button onClick={() => handleVote("dislike")} className="flex items-center space-x-1">
+                <FaThumbsDown className="text-lg" /> <span>{post.downVotes ?? 0}</span>
+              </button>
+              <div className="flex items-center space-x-1">
+                <FaComment className="text-lg" /> <span>{comments.length}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Comment Section */}
+          <div className="bg-white p-6 rounded-lg shadow-md mt-6">
+            <form onSubmit={handleAddComment} className="flex items-center space-x-2">
+              <img src={user.avatar || avatarDefault} alt="User Avatar" className="h-8 w-8 rounded-full" />
+              <input
+                type="text"
+                placeholder="Add a comment..."
+                value={commentInput}
+                onChange={(e) => setCommentInput(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-md text-sm"
+              />
+              <button type="submit" className="bg-blue-500 text-white py-2 px-4 rounded-md">
+                <FaPaperPlane />
+              </button>
+            </form>
+            <div className="mt-6">{renderComments(comments)}</div>
+          </div>
+        </>
+      ) : (
+        <p className="text-center text-gray-500">Post does not exist!</p>
+      )}
     </div>
   );
 };

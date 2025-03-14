@@ -1,4 +1,5 @@
 const User = require("../models/userModel");
+const Post = require("../models/postModel");
 const Friendship = require("../models/friendshipModel");
 const APIFeatures = require("../utils/apiFeatures");
 const catchAsync = require("../utils/catchAsync");
@@ -24,7 +25,7 @@ exports.updateMe = catchAsync(async (req, res, next) => {
   }
   const filterBody = filterObj(req.body, "isActive");
   if (req.file) filterBody.avatar = req.file.name;
-  const updatedUser = await User.findByIdAndUpdate(req.body.id, filterBody, {
+  const updatedUser = await User.findByIdAndUpdate(req.user.id, filterBody, {
     new: true,
     runValidators: true,
   });
@@ -65,11 +66,9 @@ exports.getAllUsersPaginate = catchAsync(async (req, res, next) => {
 
   // Get the count of active and inactive users
   const activeUsersCount = await User.countDocuments({
-    
     isActive: true,
   });
   const inactiveUsersCount = await User.countDocuments({
-
     isActive: false,
   });
 
@@ -110,6 +109,7 @@ exports.toggleUserActiveStatus = catchAsync(async (req, res, next) => {
     },
   });
 });
+
 exports.searchUsers = catchAsync(async (req, res, next) => {
   const { query } = req.query;
 
@@ -134,6 +134,7 @@ exports.searchUsers = catchAsync(async (req, res, next) => {
     data: users,
   });
 });
+
 exports.searchUsers2 = catchAsync(async (req, res, next) => {
   const { keyword, userId } = req.query;
 
@@ -182,3 +183,107 @@ exports.searchUsers2 = catchAsync(async (req, res, next) => {
     data: results,
   });
 });
+
+//Hàm lấy user profile\
+exports.getUserProfile = async (req, res) => {
+  try {
+    res.set("Cache-Control", "no-store");
+
+    // Kiểm tra xem req.user.id có hợp lệ không
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({
+        status: "fail",
+        message: "Không có quyền truy cập. Vui lòng đăng nhập lại!",
+      });
+    }
+
+    // Tìm user trong database
+    const user = await User.findById(req.user.id).select("-password");
+    if (!user) {
+      return res.status(404).json({
+        status: "fail",
+        message: "Người dùng không tồn tại",
+      });
+    }
+
+    // Chuyển đổi thành object thuần túy để có thể chỉnh sửa dữ liệu
+    const userData = {
+      ...user.toObject(),
+      avatar: user.avatar || "https://example.com/default-avatar.png",
+    };
+
+    res.status(200).json({
+      status: "success",
+      message: "Lấy thông tin người dùng thành công",
+      data: userData,
+    });
+  } catch (error) {
+    console.error("Lỗi khi lấy thông tin người dùng:", error);
+    res.status(500).json({
+      status: "error",
+      message: "Lỗi server, vui lòng thử lại sau!",
+    });
+  }
+};
+
+//Hàm Update user profile
+exports.updateProfile = async (req, res) => {
+  try {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ message: "Vui lòng đăng nhập!" });
+    }
+
+    const { username, studentCode, avatar } = req.body; // Nhận URL ảnh từ frontend
+
+    // Cập nhật thông tin người dùng trong database
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user.id,
+      { username, studentCode, avatar },
+      { new: true, runValidators: true }
+    ).select("-password");
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: "Không tìm thấy người dùng!" });
+    }
+
+    res.status(200).json({
+      status: "success",
+      message: "Cập nhật thông tin thành công!",
+      data: updatedUser,
+    });
+  } catch (error) {
+    console.error("Lỗi cập nhật hồ sơ:", error);
+    res.status(500).json({ message: "Lỗi server!" });
+  }
+};
+
+//Hàm lấy post
+exports.getBookmarkedPosts = async (req, res) => {
+  try {
+    const userId = req.user.id; // ID của user lấy từ middleware auth
+
+    // Lấy danh sách ID các bài post mà user đã bookmark
+    const user = await User.findById(userId).select('bookmarks');
+    
+    if (!user) {
+      return res.status(404).json({ status: 'fail', message: 'Người dùng không tồn tại' });
+    }
+
+    // Truy vấn danh sách bài viết dựa trên ID đã bookmark
+    const bookmarkedPosts = await Post.find({ _id: { $in: user.bookmarks || [] } });
+    res.status(200).json({
+      status: 'success',
+      results: bookmarkedPosts.length,
+      data: bookmarkedPosts,
+    });
+  } catch (error) {
+    console.error('Lỗi server:', error);
+    res.status(500).json({ status: 'error', message: 'Lỗi server!' });
+  }
+};
+
+
+
+
+
+

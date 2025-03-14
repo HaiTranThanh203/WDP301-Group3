@@ -1,5 +1,14 @@
-import React, { useState } from 'react';
-import { FaHome, FaNewspaper, FaComments, FaGamepad, FaQuestionCircle, FaBook, FaCaretDown } from 'react-icons/fa'; // Import các icon
+import React, { useState } from "react";
+import {
+  FaHome,
+  FaNewspaper,
+  FaComments,
+  FaGamepad,
+  FaQuestionCircle,
+  FaBook,
+  FaCaretDown,
+  FaUserFriends
+} from "react-icons/fa"; // Import các icon
 
 export default function Sidebar() {
   const [isCommunitiesOpen, setIsCommunitiesOpen] = useState(false); // Quản lý mở/đóng Communities
@@ -14,17 +23,30 @@ export default function Sidebar() {
         {/* Home */}
         <li className="flex items-center space-x-4">
           <FaHome className="text-xl" />
-          <a href="#" className="text-lg hover:text-indigo-400">Home</a>
+
+          <a href="/" className="text-lg hover:text-indigo-400">
+            Home
+          </a>
         </li>
         {/* News */}
         <li className="flex items-center space-x-4">
           <FaNewspaper className="text-xl" />
-          <a href="#" className="text-lg hover:text-indigo-400">News</a>
+
+          <a href="/news" className="text-lg hover:text-indigo-400">News</a>
+
         </li>
         {/* Chat */}
         <li className="flex items-center space-x-4">
           <FaComments className="text-xl" />
-          <a href="#" className="text-lg hover:text-indigo-400">Chat</a>
+          <a href="/chat" className="text-lg hover:text-indigo-400">
+            Chat
+          </a>
+        </li>
+        <li className="flex items-center space-x-4">
+          <FaUserFriends className="text-xl" />
+          <a href="/listfriend" className="text-lg hover:text-indigo-400">
+            Friends
+          </a>
         </li>
 
         {/* Đường kẻ giữa */}
@@ -33,28 +55,42 @@ export default function Sidebar() {
         {/* Your Communities với icon dropdown */}
         <li className="flex items-center space-x-4" onClick={toggleCommunities}>
           <span className="text-lg">Your Communities</span>
-          <FaCaretDown className={`text-gray-600 ${isCommunitiesOpen ? 'transform rotate-180' : ''}`} />
-
+          <FaCaretDown
+            className={`text-gray-600 ${
+              isCommunitiesOpen ? "transform rotate-180" : ""
+            }`}
+          />
         </li>
 
         {/* Mục con của Your Communities */}
         {isCommunitiesOpen && (
           <ul className="pl-6 space-y-2">
             <li className="flex items-center space-x-4">
-              <a href="#" className="text-lg text-red-500 hover:text-red-600">+ Create Community</a>
+              <a
+                href="/createcommunity"
+                className="text-lg text-red-500 hover:text-red-600"
+              >
+                + Create Community
+              </a>
             </li>
 
             <li className="flex items-center space-x-4">
               <FaGamepad className="text-xl" />
-              <a href="#" className="text-lg hover:text-indigo-400">Games</a>
+              <a href="#" className="text-lg hover:text-indigo-400">
+                Games
+              </a>
             </li>
             <li className="flex items-center space-x-4">
               <FaQuestionCircle className="text-xl" />
-              <a href="#" className="text-lg hover:text-indigo-400">Q&A Questions</a>
+              <a href="#" className="text-lg hover:text-indigo-400">
+                Q&A Questions
+              </a>
             </li>
             <li className="flex items-center space-x-4">
               <FaBook className="text-xl" />
-              <a href="#" className="text-lg hover:text-indigo-400">Education</a>
+              <a href="#" className="text-lg hover:text-indigo-400">
+                Education
+              </a>
             </li>
           </ul>
         )}
