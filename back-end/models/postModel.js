@@ -1,18 +1,22 @@
 const mongoose = require('mongoose');
 const Community = require('./communityModel');
+
 const postSchema = new mongoose.Schema(
   {
-    userId: { type: mongoose.Schema.ObjectId, ref: 'User' },
-    communityId: { type: mongoose.Schema.ObjectId, ref: 'Community' },
-    title: String,
-    content: String,
-    media: [
-      {
-        type: String,
-      },
-    ],
+    userId: { type: mongoose.Schema.ObjectId, ref: 'User', required: true },
+    communityId: { type: mongoose.Schema.ObjectId, ref: 'Community', required: true },
+    title: { type: String, required: true },
+    content: { type: String, required: true },
+    media: [{ type: String }],
     commentCount: { type: Number, default: 0 },
-    votes: { type: Map, of: Boolean, default: {} },
+    
+    // ✅ Fix: Lưu dạng Map<String, String> để lưu "like" hoặc "dislike"
+    votes: { type: Map, of: String, default: {} },
+    
+    // ✅ Thêm trường tổng like/dislike để dễ truy vấn
+    upVotes: { type: Number, default: 0 },
+    downVotes: { type: Number, default: 0 },
+
     isEdited: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },
   },
@@ -22,22 +26,24 @@ const postSchema = new mongoose.Schema(
     toObject: { virtuals: true },
   }
 );
-// MIDDLEWARES
+
+// ✅ Fix: Chỉ lọc bài viết có `isActive: true`
 postSchema.pre(/^find/, function (next) {
-  this.find({ isActive: { $ne: false } });
+  this.where({ isActive: { $ne: false } });
   next();
 });
-// After create a new post
+
+// ✅ Fix lỗi gọi `next()` trước `await`
 postSchema.post('save', async function (doc, next) {
   try {
-    // Increment postCount in the associated Community document
     await Community.findByIdAndUpdate(doc.communityId, {
       $inc: { postCount: 1 },
     });
-    next(); // Call next middleware
+    next();
   } catch (err) {
-    next(err); // Handle any errors
+    return next(err);
   }
 });
+
 const Post = mongoose.model('Post', postSchema);
 module.exports = Post;

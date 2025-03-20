@@ -1,81 +1,119 @@
-import { useParams, Link } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { getDetailNewsById } from '../../services/NewsService';
+import { message } from 'antd';
 
 const DetailNews = () => {
-  const { id } = useParams(); // Get the ID from the URL parameter
+  const { id } = useParams(); // Lấy id từ URL
+  const navigate = useNavigate();
+  const [newsItem, setNewsItem] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Dummy data for news list
-  const newsList = [
-    {
-      id: 1,
-      image: 'https://randomuser.me/api/portraits/men/1.jpg',
-      title: 'Musk',
-      description: 'Musk\'s attorney, Marc Toberoff, confirmed the development, as per the report.',
-      status: 'Active',
-    },
-    {
-      id: 2,
-      image: 'https://randomuser.me/api/portraits/men/2.jpg',
-      title: 'Elon Musk',
-      description: 'Elon Musk and a group of investors have made a $97.4 billion offer to buy OpenAI\'s controlling non-profit entity.',
-      status: 'Active',
-    },
-    {
-      id: 3,
-      image: 'https://randomuser.me/api/portraits/men/3.jpg',
-      title: 'Marc Toberoff',
-      description: 'Musk\'s attorney, Marc Toberoff, confirmed the development, as per the report.',
-      status: 'Active',
-    },
-    {
-      id: 4,
-      image: 'https://randomuser.me/api/portraits/men/4.jpg',
-      title: 'The Bid',
-      description: 'The bid is backed by Musk\'s own AI company, xAI (founded in 2023).',
-      status: 'DeActive',
-    }
-  ];
+  useEffect(() => {
+    const fetchNewsDetail = async () => {
+      try {
+        const response = await getDetailNewsById(id);
+        console.log("News detail:", response.data);
+        setNewsItem(response.data);
+      } catch (error) {
+        console.error("Error fetching news detail:", error);
+        message.error("Error fetching news detail");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchNewsDetail();
+  }, [id]);
 
-  // Find the specific news item using the id
-  const newsItem = newsList.find(item => item.id === parseInt(id));
+  if (loading) {
+    return <div className="p-8 text-center text-xl">Loading...</div>;
+  }
 
   if (!newsItem) {
-    return <div>News not found</div>;
+    return <div className="p-8 text-center text-xl">News not found</div>;
   }
 
   return (
-    <div className="p-8 bg-white shadow-lg rounded-lg max-w-4xl mx-auto">
-      <h1 className="text-3xl font-semibold mb-6 text-center">{newsItem.title}</h1>
-      <div className="flex items-center justify-center mb-6">
-        <img src={newsItem.image} alt={newsItem.title} className="w-20 h-20 rounded-full" />
-      </div>
-      <div className="mb-6">
-        <strong>Description:</strong>
-        <p>{newsItem.description}</p>
-      </div>
-      <div className="mb-6">
-        <strong>Status:</strong>
-        <span className={`px-2 py-1 rounded-md ${newsItem.status === 'Active' ? 'bg-green-100 text-green-500' : 'bg-red-100 text-red-500'}`}>
-          {newsItem.status}
-        </span>
+    <div className="p-8 bg-white shadow-2xl rounded-xl max-w-4xl mx-auto">
+      {/* Title */}
+      <h1 className="text-4xl font-bold text-center mb-8 text-gray-800">
+        {newsItem.title}
+      </h1>
+
+      /* Image & Dates */
+        <div className="mb-8">
+        <img
+          src={newsItem.image || 'https://via.placeholder.com/800x400'}
+          alt={newsItem.title}
+          className="w-full h-64 object-cover rounded-md border-4 border-blue-200"
+        />
+        <div className="mt-4 flex justify-center items-center space-x-2 text-sm text-gray-500">
+          <span>
+            Created: {new Date(newsItem.createdAt).toLocaleString('en-US', {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+            })}
+          </span>
+          <span className="text-gray-400">|</span>
+          <span>
+            Updated: {new Date(newsItem.updatedAt).toLocaleString('en-US', {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+            })}
+          </span>
+        </div>
       </div>
 
-      {/* Update News Button */}
-      <div className="mb-6 text-center">
+      {/* Content */}
+      <div className="mb-8">
+        <p className="text-lg text-gray-700 leading-relaxed">
+          {newsItem.content}
+        </p>
+      </div>
+
+      {/* Meta Information */}
+      <div className="mb-8 flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
+        <div className="flex items-center space-x-2">
+          <strong className="text-gray-800">Status:</strong>
+          <span
+            className={`px-3 py-1 rounded-full text-sm font-medium ${
+              newsItem.isActive
+                ? 'bg-green-100 text-green-600'
+                : 'bg-red-100 text-red-600'
+            }`}
+          >
+            {newsItem.isActive ? 'Active' : 'Deactive'}
+          </span>
+        </div>
+        <div className="flex items-center space-x-2">
+          <strong className="text-gray-800">Author:</strong>
+          <span className="text-gray-700">
+            {newsItem.authorId?.username || 'HaiTran'}
+          </span>
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
         <Link
-          to={`/admin/update-news/${newsItem.id}`}  // Link to the Update News page, passing the news id
-          className="bg-blue-500 text-white py-2 px-6 rounded-md shadow-md hover:bg-blue-600 text-sm"
+          to={`/admin/update-news/${newsItem.id || newsItem._id}`}
+          className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-8 rounded-md shadow-md text-sm"
         >
           Update News
         </Link>
+        <button
+          onClick={() => navigate(-1)}
+          className="bg-gray-600 hover:bg-gray-700 text-white py-2 px-8 rounded-md shadow-md text-sm focus:outline-none"
+        >
+          Go Back
+        </button>
       </div>
-
-      {/* Button to go back */}
-      <button
-        onClick={() => window.history.back()}
-        className="bg-gray-500 text-white py-2 px-4 rounded-md"
-      >
-        Go Back
-      </button>
     </div>
   );
 };

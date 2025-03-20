@@ -12,6 +12,9 @@ const postRouter = require("./routes/postRoutes");
 const commentRouter = require("./routes/commentRoutes");
 const reportRouter = require("./routes/reportRoutes");
 const notificationRouter = require("./routes/notificationRoutes");
+const newsRouter = require("./routes/newsRoute");
+const chatRouter = require("./routes/messageRoutes");
+const friendRouter = require("./routes/friendshipRoutes");
 const path = require("path");
 // 1) MIDDLEWARES
 // app.set('trust proxy', 3);
@@ -25,7 +28,7 @@ app.use(
       "http://localhost:3000",
       "http://127.0.0.1:9999",
       "http://127.0.0.1:3000",
-      "http://localhost:5173" // Add this line
+      "http://localhost:5173",
     ],
   })
 );
@@ -54,6 +57,11 @@ app.use("/api/v1/posts", postRouter);
 app.use("/api/v1/comments", commentRouter);
 app.use("/api/v1/reports", reportRouter);
 app.use("/api/v1/notifications", notificationRouter);
+app.use("/api/v1/news", newsRouter);
+app.use("/api/v1/messages", chatRouter);
+app.use("/api/v1/friendships", friendRouter);
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 
 // 3) ERROR HANDLING
 // Bắt lỗi các route API không hợp lệ

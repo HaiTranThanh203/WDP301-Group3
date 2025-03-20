@@ -229,7 +229,7 @@ exports.changePassword = catchAsync(async (req, res, next) => {
   // Kiểm tra mật khẩu cũ có đúng không
   const isMatch = await user.correctPassword(oldPassword, user.password);
   if (!isMatch) {
-    return next(new AppError('Mật khẩu cũ không chính xác', 401));
+    return next(new AppError('Old password is incorrect', 401));
   }
 
   // Cập nhật mật khẩu mới

@@ -4,20 +4,22 @@ const APIFeatures = require('../utils/apiFeatures'); // Class hỗ trợ lọc, 
 const { getIo } = require('../socket');
 
 // Controller gửi tin nhắn
+// Controller gửi tin nhắn
 exports.sendMessage = catchAsync(async (req, res, next) => {
   const { sender, recipient, content } = req.body;
 
-  // Tạo và lưu tin nhắn vào MongoDB
+  // Create and save the message in the database
   const message = await Message.create({ sender, recipient, content });
 
-  // Lấy instance của socket.io và phát tin nhắn tới phòng của người nhận và người gửi
+  // Get socket.io instance
   const io = getIo();
+  console.log(`Emitting newMessage to rooms: ${sender} and ${recipient}`);
   io.to(recipient).emit('newMessage', message);
   io.to(sender).emit('newMessage', message);
 
   res.status(201).json({
     success: true,
-    data: message
+    data: message,
   });
 });
 

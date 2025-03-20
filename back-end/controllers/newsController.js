@@ -10,7 +10,7 @@ const {
   factoryCreateOne,
 } = require('./handlerFactory');
 // CRUD
-exports.getNewsById = factoryGetOne(News, 
+exports.getNewsById = factoryGetOne(News, [{ path: 'authorId',select:'username' }]
 );
 exports.getAllNewsPaginate = catchAsync(async (req, res, next) => {
     const { page = 1, limit = 10, isActive, title } = req.query;
@@ -33,15 +33,15 @@ exports.getAllNewsPaginate = catchAsync(async (req, res, next) => {
     const news = await features.query;
   
     // Get the total number of matching documents
-    const totalNews = await News.countDocuments(filter);
+    const totalNews = await News.countDocuments();
   
     // Get the count of active and inactive news
     const activeNewsCount = await News.countDocuments({
-      ...filter,
+      
       isActive: true,
     });
     const inactiveNewsCount = await News.countDocuments({
-      ...filter,
+      
       isActive: false,
     });
   

@@ -59,6 +59,12 @@ exports.addFriend = catchAsync(async (req, res, next) => {
       message: 'Cần truyền requester và recipient'
     });
   }
+  if (requester === recipient) {
+    return res.status(400).json({
+      success: false,
+      message: 'requester và recipient giống nhau không hợp lệ.'
+    });
+  }
 
   // Kiểm tra xem đã tồn tại mối quan hệ nào giữa 2 người chưa
   let friendship = await Friendship.findOne({
@@ -114,7 +120,12 @@ exports.acceptFriendRequest = catchAsync(async (req, res, next) => {
       message: 'Cần truyền requester và recipient'
     });
   }
-
+  if (requester === recipient) {
+    return res.status(400).json({
+      success: false,
+      message: 'requester và recipient giống nhau không hợp lệ.'
+    });
+  }
   // Tìm lời mời kết bạn mà người nhận phải chấp nhận
   const friendship = await Friendship.findOne({
     requester,
@@ -131,11 +142,16 @@ exports.acceptFriendRequest = catchAsync(async (req, res, next) => {
 
   friendship.status = 'accepted';
   await friendship.save();
-
+  
+  const pendingCount = await Friendship.countDocuments({
+    recipient,
+    status: 'pending'
+  });
   res.status(200).json({
     success: true,
     message: 'Lời mời kết bạn đã được chấp nhận.',
-    data: friendship
+    data: friendship,
+    pendingCount
   });
 });
 
@@ -172,11 +188,16 @@ exports.rejectFriendRequest = catchAsync(async (req, res, next) => {
 
   friendship.status = 'rejected';
   await friendship.save();
+  const pendingCount = await Friendship.countDocuments({
+    recipient,
+    status: 'pending'
+  });
 
   res.status(200).json({
     success: true,
     message: 'Lời mời kết bạn đã bị từ chối.',
-    data: friendship
+    data: friendship,
+    pendingCount
   });
 });
 
@@ -260,5 +281,26 @@ exports.getUserFriendships = catchAsync(async (req, res, next) => {
   });
 });
 
+//hàm đếm có bao nhiêu lời mời kết bạn
+exports.hasPendingFriendRequests = catchAsync(async (req, res, next) => {
+  const { userId } = req.query;
 
-  
+  if (!userId) {
+    return res.status(400).json({
+      success: false,
+      message: 'Cần truyền userId trong query'
+    });
+  }
+
+  // Đếm số lượng lời mời kết bạn đang chờ
+  const pendingCount = await Friendship.countDocuments({
+    recipient: userId,
+    status: 'pending'
+  });
+
+  res.status(200).json({
+    success: true,
+    notificationCount: pendingCount
+  });
+});
+

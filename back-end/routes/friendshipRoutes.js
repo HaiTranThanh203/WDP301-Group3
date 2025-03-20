@@ -23,4 +23,7 @@ router.post('/unfriend', friendshipController.unfriend);
 // Ví dụ: GET http://localhost:9999/api/friendships/status?userId=<USER_ID>
 router.get('/status', friendshipController.getUserFriendships);
 
+router.get('/has-pending-requests', friendshipController.hasPendingFriendRequests);
+// router.post("/handle-friend-request", friendshipController.handleFriendRequest);
+
 module.exports = router;

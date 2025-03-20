@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { listReports, getReportStats, updateReport } from '../../services/ReportService';
 import { message } from 'antd';
+import { useNavigate } from 'react-router-dom';
 
 const ManagerReport = () => {
   const [reports, setReports] = useState([]);
@@ -14,7 +15,7 @@ const ManagerReport = () => {
   const [processedReports, setProcessedReports] = useState(0);
   const [unprocessedReports, setUnprocessedReports] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
-
+  const navigate = useNavigate();
   // Fetch statistics for the reports
   const fetchStats = useCallback(async () => {
     try {
@@ -85,6 +86,9 @@ const ManagerReport = () => {
       message.error('Error updating report status');
     }
   };
+  const handleViewDetail = (id) => {
+    navigate(`/admin/report/${id}`);
+};
 
   return (
     <div className="p-8 bg-gray-100 min-h-screen">
@@ -143,8 +147,8 @@ const ManagerReport = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Updated At</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User (Username)</th>
+                  
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reporter Name</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                 </tr>
               </thead>
@@ -155,19 +159,18 @@ const ManagerReport = () => {
                     <td className="px-6 py-4 whitespace-nowrap">{report.entityType}</td>
                     <td className="px-6 py-4 whitespace-nowrap">{report.description}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${report.status === 'Processed' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${report.status === 'Cancel' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
                         {report.status}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">{new Date(report.createdAt).toLocaleString()}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{new Date(report.updatedAt).toLocaleString()}</td>
                     <td className="px-6 py-4 whitespace-nowrap">{report.userId?.username || 'Unknown'}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <button
-                        onClick={() => handleUpdateReportStatus(report._id, report.status === 'Processed' ? 'Not Processed' : 'Processed')}
+                        onClick={() => handleViewDetail(report._id)}
                         className="bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-4 rounded"
                       >
-                        {report.status === 'Processed' ? 'Cancel' : 'Approve'}
+                        View Detail
                       </button>
                     </td>
                   </tr>

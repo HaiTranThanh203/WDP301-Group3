@@ -8,21 +8,33 @@ const {
   logout,
 } = require("../controllers/authController");
 
+const { getUserProfile,updateProfile,getBookmarkedPosts,updateAvatar} = require("../controllers/userController");
+const subscriptionController = require("../controllers/subscriptionController");
+
+
 const router = express.Router();
 router.post("/signup", signup);
 router.post("/login", login);
+
+
 router.post("/forgotPassword", forgotPassword);
-router.post("/change-password", protect, changePassword);
+router.put("/change-password", protect, changePassword);
 router.get("/logout", logout);
 const userController = require("../controllers/userController");
 router.get("/list", userController.getAllUsersPaginate);
 router.get("/search", userController.searchUsers);
 // Endpoint tìm kiếm user với flag isFriend
 // Ví dụ: GET http://localhost:9999/api/users/search?keyword=abc&userId=YOUR_USER_ID
+
 router.get("/search2", userController.searchUsers);
-
-router.get("/:id", userController.getUserById);
+router.get("/community-join", subscriptionController.getAllSubscriptions);
+router.get("/profile", protect, userController.getUserProfile);
+router.get("/bookmarked-posts", protect, userController.getBookmarkedPosts);
+router.put("/update-profile", protect, updateProfile);
+router.put("/update-avatar", protect, userController.updateAvatar);
 router.patch("/:id/toggle-active", userController.toggleUserActiveStatus);
+router.patch("/update-me", protect, userController.updateMe);
+router.get("/infor/:id", userController.getUserInfor);
+router.get("/:id", userController.getUserById);
 
-router.route("/update-me").patch(userController.updateMe);
 module.exports = router;

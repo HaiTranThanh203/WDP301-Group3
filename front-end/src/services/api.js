@@ -6,54 +6,66 @@ const token = localStorage.getItem("token");
 
 const HEADERS_NOT_AUTHORIZATION = {
   "Content-Type": "application/json",
-  "Accept": "application/json",
+  Accept: "application/json",
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "Origin, X-Requested-With, Content-Type, Accept",
+  "Access-Control-Allow-Headers":
+    "Origin, X-Requested-With, Content-Type, Accept",
 };
 
 export function getHeaderToTest() {
   return {
     "Content-Type": "application/json",
-    "Accept": "application/json",
+    Accept: "application/json",
     "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Origin, X-Requested-With, Content-Type, Accept",
-    "Authorization": "Bearer " + token,
+    "Access-Control-Allow-Headers":
+      "Origin, X-Requested-With, Content-Type, Accept",
+    Authorization: "Bearer " + token,
   };
 }
 
 export function getHeaderMultiple() {
   return {
     "Content-Type": "multipart/form-data; boundary=something",
-    "Accept": "application/json",
+    Accept: "application/json",
     "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Origin, X-Requested-With, Content-Type, Accept",
-    "Authorization": "Bearer " + localStorage.getItem("token"),
+    "Access-Control-Allow-Headers":
+      "Origin, X-Requested-With, Content-Type, Accept",
+    Authorization: "Bearer " + localStorage.getItem("token"),
   };
 }
 
-export  default function getHeader() {
+export function getHeader() {
   return {
     "Content-Type": "application/json",
-    "Accept": "application/json",
+    Accept: "application/json",
     "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Origin, X-Requested-With, Content-Type, Accept",
-    "Authorization": "Bearer " + localStorage.getItem("token"),
+    "Access-Control-Allow-Headers":
+      "Origin, X-Requested-With, Content-Type, Accept",
+    Authorization: "Bearer " + localStorage.getItem("token"),
   };
 }
 
 axios.interceptors.response.use(
   (success) => {
     if (success.data.errors) {
-      message.error(success.data.errors.message || "An error occurred, please try again later.");
+      message.error(
+        success.data.errors.message ||
+          "An error occurred, please try again later."
+      );
       return Promise.reject(success);
     }
     return success;
   },
   (fail) => {
-    let msg = fail.response.data.message && !Array.isArray(fail.response.data.message)
-      ? fail.response.data.message
-      : "An error occurred, please try again later.";
-    message.error(msg === "Forbidden resource" ? "You do not have permission or data does not exist" : msg);
+    let msg =
+      fail.response.data.message && !Array.isArray(fail.response.data.message)
+        ? fail.response.data.message
+        : "An error occurred, please try again later.";
+    message.error(
+      msg === "Forbidden resource"
+        ? "You do not have permission or data does not exist"
+        : msg
+    );
     return Promise.reject(fail);
   }
 );
